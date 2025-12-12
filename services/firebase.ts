@@ -1,14 +1,12 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, Firestore } from 'firebase/firestore';
 
-// Helper to safely get env vars without crashing
-// This wraps the access in a try-catch and handles TS ignore for safety
+// Helper to safely get env vars
 const getEnvVar = (key: string) => {
   try {
     // @ts-ignore
     return import.meta.env?.[key];
   } catch (e) {
-    console.warn("Environment variable access failed", e);
     return undefined;
   }
 };
@@ -28,10 +26,10 @@ const firebaseConfig = {
 let db: Firestore;
 
 try {
-  // If api key is empty or undefined, throw to trigger offline mode
-  if (!firebaseConfig.apiKey) {
-    console.warn("VITE_FIREBASE_API_KEY not set. Defaulting to Offline Demo Mode.");
-    throw new Error("Firebase API Key is missing");
+  // If api key is missing, we throw to trigger the catch block which enables offline mode
+  if (!apiKey) {
+    console.warn("VITE_FIREBASE_API_KEY not found. Defaulting to Offline Demo Mode.");
+    throw new Error("Missing Firebase API Key");
   }
   const app = initializeApp(firebaseConfig);
   db = getFirestore(app);
