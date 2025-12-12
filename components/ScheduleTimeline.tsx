@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Job, JobStatus } from '../types';
 import { SHOP_OPEN_HOUR, SHOP_CLOSE_HOUR, TOTAL_BAYS } from '../constants';
 import { ChevronLeft, ChevronRight, Calendar, Clock, CheckCircle, PlayCircle, PauseCircle, Users, AlertCircle } from 'lucide-react';
@@ -106,6 +106,46 @@ const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ jobs, filterBays })
 
     return isSameDay;
   });
+
+  // Calculate stacking for unassigned jobs
+  const unassignedJobsLayout = useMemo(() => {
+    const unassigned = displayedJobs.filter(j => !j.bayId);
+    
+    // Sort by effective start time
+    const sorted = [...unassigned].sort((a,b) => {
+        const tA = Math.max(a.scheduledTime || a.startedAt || a.createdAt, new Date(selectedDate).setHours(SHOP_OPEN_HOUR,0,0,0));
+        const tB = Math.max(b.scheduledTime || b.startedAt || b.createdAt, new Date(selectedDate).setHours(SHOP_OPEN_HOUR,0,0,0));
+        return tA - tB;
+    });
+
+    const tracks: number[] = []; // Stores end time of the last job in each track
+    
+    const layout = sorted.map(job => {
+        const dayStart = new Date(selectedDate);
+        dayStart.setHours(SHOP_OPEN_HOUR, 0, 0, 0);
+        
+        let start = job.scheduledTime || job.startedAt || job.createdAt;
+        // Clamp start time for overlap calculation
+        if (start < dayStart.getTime()) start = dayStart.getTime();
+
+        const duration = job.estimatedDurationHours * 3600 * 1000;
+        const end = start + duration;
+
+        // Find first available track
+        let trackIndex = tracks.findIndex(trackEnd => trackEnd <= start);
+        
+        if (trackIndex === -1) {
+            trackIndex = tracks.length; // Create new track
+            tracks.push(end);
+        } else {
+            tracks[trackIndex] = end; // Append to existing track
+        }
+
+        return { job, trackIndex };
+    });
+
+    return { layout, totalTracks: Math.max(1, tracks.length) };
+  }, [displayedJobs, selectedDate]);
   
   const handleDateChange = (offset: number) => {
       const newDate = new Date(selectedDate);
@@ -174,49 +214,6 @@ const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ jobs, filterBays })
             </div>
         )}
 
-        {/* Unassigned / Pending Row */}
-        {!filterBays && (
-            <div className="flex border-b min-h-[70px] bg-slate-50/30 hover:bg-slate-50 transition-colors">
-                <div className="w-24 md:w-32 flex-shrink-0 p-3 border-r flex flex-col justify-center text-xs">
-                    <span className="font-bold text-slate-700">Walk-ins / Queue</span>
-                    <span className="text-slate-400 text-[10px]">Unassigned Jobs</span>
-                </div>
-                <div className="flex-1 relative my-2 mx-1">
-                     {/* Background Grid */}
-                     {hours.map((hour) => (
-                        <div key={hour} className="absolute top-[-8px] bottom-[-8px] border-l border-slate-100" style={{ left: `${((hour - SHOP_OPEN_HOUR) / (SHOP_CLOSE_HOUR - SHOP_OPEN_HOUR)) * 100}%` }} />
-                     ))}
-                     
-                     {/* Unassigned Jobs */}
-                     {displayedJobs.filter(j => !j.bayId).map(job => {
-                        const style = getPosition(job);
-                        const visual = getJobStyles(job.status);
-                        
-                        return (
-                             <div
-                                key={job.id}
-                                className={`absolute top-1 bottom-1 rounded-md border px-2 py-1 text-xs overflow-hidden cursor-pointer transition-all flex flex-col justify-center hover:scale-[1.02] hover:shadow-lg ${visual.base}`}
-                                style={{ ...style }}
-                                title={`${job.carModel} (${job.status})`}
-                            >
-                                <div className="font-bold flex items-center gap-1.5 leading-tight truncate">
-                                    {visual.icon}
-                                    <span className="truncate">{job.carModel}</span>
-                                </div>
-                                <span className="text-[10px] opacity-80 truncate">{job.serviceDescription}</span>
-                            </div>
-                        )
-                     })}
-                     
-                     {displayedJobs.filter(j => !j.bayId).length === 0 && (
-                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40">
-                            <span className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold border border-dashed border-slate-300 px-3 py-1 rounded-full">Empty Queue</span>
-                         </div>
-                     )}
-                </div>
-            </div>
-        )}
-
         {/* Bays */}
         {bays.map(bayId => (
           <div key={bayId} className="flex border-b min-h-[100px] group hover:bg-slate-50/50 transition-colors relative">
@@ -266,6 +263,54 @@ const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ jobs, filterBays })
             </div>
           </div>
         ))}
+
+        {/* Unassigned / Pending Row (Moved to Bottom) */}
+        {!filterBays && (
+            <div className="flex border-b bg-slate-50/30 hover:bg-slate-50 transition-colors border-t-4 border-t-slate-100">
+                <div className="w-24 md:w-32 flex-shrink-0 p-3 border-r flex flex-col justify-center text-xs">
+                    <span className="font-bold text-slate-700">Walk-ins / Queue</span>
+                    <span className="text-slate-400 text-[10px]">Unassigned Jobs</span>
+                </div>
+                {/* Dynamic height based on stacked tracks */}
+                <div className="flex-1 relative my-2 mx-1" style={{ minHeight: `${Math.max(80, unassignedJobsLayout.totalTracks * 60)}px` }}>
+                     {/* Background Grid */}
+                     {hours.map((hour) => (
+                        <div key={hour} className="absolute top-[-8px] bottom-[-8px] border-l border-slate-100" style={{ left: `${((hour - SHOP_OPEN_HOUR) / (SHOP_CLOSE_HOUR - SHOP_OPEN_HOUR)) * 100}%` }} />
+                     ))}
+                     
+                     {/* Unassigned Jobs with Stacking */}
+                     {unassignedJobsLayout.layout.map(({ job, trackIndex }) => {
+                        const style = getPosition(job);
+                        const visual = getJobStyles(job.status);
+                        
+                        return (
+                             <div
+                                key={job.id}
+                                className={`absolute rounded-md border px-2 py-1 text-xs overflow-hidden cursor-pointer transition-all flex flex-col justify-center hover:scale-[1.02] hover:shadow-lg ${visual.base}`}
+                                style={{ 
+                                    ...style,
+                                    height: '50px',
+                                    top: `${trackIndex * 55}px` // Stack vertically
+                                }}
+                                title={`${job.carModel} (${job.status})`}
+                            >
+                                <div className="font-bold flex items-center gap-1.5 leading-tight truncate">
+                                    {visual.icon}
+                                    <span className="truncate">{job.carModel}</span>
+                                </div>
+                                <span className="text-[10px] opacity-80 truncate">{job.serviceDescription}</span>
+                            </div>
+                        )
+                     })}
+                     
+                     {unassignedJobsLayout.layout.length === 0 && (
+                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40">
+                            <span className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold border border-dashed border-slate-300 px-3 py-1 rounded-full">Empty Queue</span>
+                         </div>
+                     )}
+                </div>
+            </div>
+        )}
         
         {displayedJobs.length === 0 && (
             <div className="flex flex-col items-center justify-center py-24 text-slate-300">
