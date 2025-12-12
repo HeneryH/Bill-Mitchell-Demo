@@ -43,6 +43,7 @@ class GarageService {
 
     try {
         // Listen to Jobs
+        // If db is empty (offline mode), this throws immediately
         const jobsRef = collection(db, 'jobs');
         const jobsQuery = query(jobsRef, orderBy('createdAt', 'desc'));
         
@@ -87,7 +88,16 @@ class GarageService {
 
         this.initialized = true;
     } catch (e) {
-        this.enableOfflineMode();
+        // Immediate failure (e.g. invalid DB object)
+        console.warn("Firestore initialization failed, enabling offline mode.", e);
+        await this.enableOfflineMode();
+        // Wait a tick for UI to mount before notifying
+        setTimeout(() => {
+            this.sendNotification({
+                message: 'Running in Offline Demo Mode',
+                type: 'info'
+            });
+        }, 1000);
     }
   }
 
