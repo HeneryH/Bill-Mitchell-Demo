@@ -3,7 +3,8 @@ import { garageService } from '../services/garageService';
 import { Job, JobStatus, User } from '../types';
 import StatusBadge from '../components/StatusBadge';
 import { Play, Pause, CheckSquare, Clock, User as UserIcon, AlertTriangle, MessageSquare, Layout, Calendar, Grid, Check } from 'lucide-react';
-import { TOTAL_BAYS, BAY_CALENDAR_IDS } from '../constants';
+import { TOTAL_BAYS } from '../constants';
+import ScheduleTimeline from '../components/ScheduleTimeline';
 
 interface BayLeaderViewProps {
   user: User;
@@ -138,6 +139,15 @@ const BayLeaderView: React.FC<BayLeaderViewProps> = ({ user }) => {
       user.assignedBayId ? [user.assignedBayId] : [1]
   );
   const [viewMode, setViewMode] = useState<'work' | 'schedule'>('work');
+  const [allJobs, setAllJobs] = useState<Job[]>([]);
+
+  useEffect(() => {
+    setAllJobs(garageService.getAllJobs());
+    const unsub = garageService.subscribe('change', () => {
+        setAllJobs(garageService.getAllJobs());
+    });
+    return unsub;
+  }, []);
 
   const toggleBay = (bayId: number) => {
     setSelectedBays(prev => {
@@ -149,20 +159,6 @@ const BayLeaderView: React.FC<BayLeaderViewProps> = ({ user }) => {
             return [...prev, bayId].sort((a,b) => a - b);
         }
     });
-  };
-
-  const getCalendarUrl = () => {
-    const baseUrl = "https://calendar.google.com/calendar/embed?height=600&wkst=1&bgcolor=%23ffffff&ctz=UTC&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=1&showCalendars=0&mode=WEEK";
-    // Define colors for bays to distinguish them in combined view
-    const colors = ['%23039BE5', '%2333B679', '%238E24AA', '%23E67C73', '%23F09300'];
-    
-    // Construct src params for all selected bays
-    const calendars = selectedBays.map(id => {
-        const calId = BAY_CALENDAR_IDS[id - 1];
-        return `&src=${encodeURIComponent(calId)}&color=${colors[id-1]}`;
-    }).join('');
-    
-    return baseUrl + calendars;
   };
 
   return (
@@ -228,25 +224,8 @@ const BayLeaderView: React.FC<BayLeaderViewProps> = ({ user }) => {
       </div>
 
       {viewMode === 'schedule' ? (
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 h-[750px]">
-              <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                     <Calendar className="text-indigo-600" size={20}/> 
-                     Schedule View
-                  </h2>
-                  <div className="text-sm text-slate-500">
-                      Showing calendars for Bays: {selectedBays.join(', ')}
-                  </div>
-              </div>
-              <iframe 
-                src={getCalendarUrl()} 
-                style={{border: 0}} 
-                width="100%" 
-                height="100%" 
-                frameBorder="0" 
-                scrolling="no"
-                title="Bay Schedules"
-               ></iframe>
+          <div className="h-[600px]">
+              <ScheduleTimeline jobs={allJobs} filterBays={selectedBays} />
           </div>
       ) : (
         <div className={`grid gap-6 ${selectedBays.length === 1 ? 'grid-cols-1 max-w-3xl mx-auto' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>

@@ -5,7 +5,7 @@ import StatusBadge from '../components/StatusBadge';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { Clock, CheckCircle, AlertCircle, PlayCircle, Plus, Calendar, ArrowRight, LayoutGrid } from 'lucide-react';
 import NewJobModal from '../components/NewJobModal';
-import { TOTAL_BAYS, BAY_CALENDAR_IDS } from '../constants';
+import ScheduleTimeline from '../components/ScheduleTimeline';
 
 const ManagerDashboard: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -48,13 +48,6 @@ const ManagerDashboard: React.FC = () => {
     };
   });
 
-  const getCalendarUrl = () => {
-    const baseUrl = "https://calendar.google.com/calendar/embed?height=600&wkst=1&bgcolor=%23ffffff&ctz=UTC&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=1&showCalendars=1&mode=WEEK";
-    const colors = ['%23039BE5', '%2333B679', '%238E24AA', '%23E67C73', '%23F09300'];
-    const calendars = BAY_CALENDAR_IDS.map((id, i) => `&src=${encodeURIComponent(id)}&color=${colors[i]}`).join('');
-    return baseUrl + calendars;
-  };
-
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
@@ -88,16 +81,8 @@ const ManagerDashboard: React.FC = () => {
       </div>
 
       {activeTab === 'schedule' ? (
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 h-[800px]">
-               <iframe 
-                src={getCalendarUrl()} 
-                style={{border: 0}} 
-                width="100%" 
-                height="100%" 
-                frameBorder="0" 
-                scrolling="no"
-                title="Master Shop Schedule"
-               ></iframe>
+          <div className="h-[600px]">
+               <ScheduleTimeline jobs={jobs} />
           </div>
       ) : (
         <>
