@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { authService } from '../services/authService';
-import { Wrench, ArrowRight, Monitor, User as UserIcon } from 'lucide-react';
+import { Wrench, ArrowRight, Monitor, User as UserIcon, Trash2 } from 'lucide-react';
 import { User, UserRole } from '../types';
 
 interface LoginViewProps {
@@ -26,6 +26,13 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
 
   const handleGuestAccess = () => {
     onLogin({id: 'public', username: 'guest', name: 'Guest', role: 'CUSTOMER'});
+  };
+
+  const handleResetData = () => {
+    if (confirm('Are you sure you want to clear all local demo data? This cannot be undone.')) {
+        localStorage.clear();
+        window.location.reload();
+    }
   };
 
   return (
@@ -94,8 +101,10 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
             View Public Board
         </button>
 
-        <div className="mt-8 text-center text-xs text-slate-400">
-            <p>Demo Mode Active. No password required.</p>
+        <div className="mt-8 flex justify-center">
+             <button onClick={handleResetData} className="text-xs text-red-400 hover:text-red-600 flex items-center gap-1 opacity-70 hover:opacity-100 transition-opacity">
+                <Trash2 size={12} /> Reset Demo Data
+             </button>
         </div>
       </div>
     </div>

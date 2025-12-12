@@ -1,10 +1,19 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, Firestore } from 'firebase/firestore';
 
-// Safely access the environment variable.
-// We use optional chaining (?) to prevent runtime crashes if 'env' is undefined on import.meta.
-// This ensures that if the build environment doesn't populate env, we simply fall back to offline mode instead of crashing.
-const apiKey = (import.meta as any).env?.VITE_FIREBASE_API_KEY;
+// Helper to safely get env vars without crashing
+// This wraps the access in a try-catch and handles TS ignore for safety
+const getEnvVar = (key: string) => {
+  try {
+    // @ts-ignore
+    return import.meta.env?.[key];
+  } catch (e) {
+    console.warn("Environment variable access failed", e);
+    return undefined;
+  }
+};
+
+const apiKey = getEnvVar('VITE_FIREBASE_API_KEY');
 
 const firebaseConfig = {
   apiKey: apiKey,
@@ -21,12 +30,14 @@ let db: Firestore;
 try {
   // If api key is empty or undefined, throw to trigger offline mode
   if (!firebaseConfig.apiKey) {
+    console.warn("VITE_FIREBASE_API_KEY not set. Defaulting to Offline Demo Mode.");
     throw new Error("Firebase API Key is missing");
   }
   const app = initializeApp(firebaseConfig);
   db = getFirestore(app);
 } catch (e) {
-  console.warn("Offline Mode Active: Firebase API Key missing or invalid.");
+  // Graceful fallback to offline mode object
+  // garageService.ts handles the empty db object safely
   db = {} as Firestore;
 }
 

@@ -1,5 +1,5 @@
 {
   "name": "AutoFlow Garage Manager",
-  "description": "A comprehensive management system for a 5-bay mechanic garage. Features role-based access for Managers (overview & stats), Bay Leaders (queue & workflow management), and Customers (public availability view).",
+  "description": "A comprehensive management system for a 5-bay mechanic garage. Features role-based access for Managers (overview & stats), Bay Leaders (queue & workflow management), and Customers (public availability view). Includes offline mode and real-time dashboard.",
   "requestFramePermissions": []
 }
