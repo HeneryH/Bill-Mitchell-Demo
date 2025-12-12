@@ -261,19 +261,29 @@ class GarageService {
   }
 
   findAvailableSlots(dateStr: string, durationHours: number): number[] {
-    const targetDate = new Date(dateStr);
-    targetDate.setHours(0,0,0,0);
-    const targetDateEnd = new Date(targetDate);
-    targetDateEnd.setHours(23,59,59,999);
+    // FIX: Parse date string (YYYY-MM-DD) manually to ensure it uses Local Time.
+    const [year, month, day] = dateStr.split('-').map(Number);
+    
+    // Create base target date for filtering existing jobs.
+    // We use noon (12:00) to safely determine the "Day" limits without risking 
+    // midnight timezone shifts (e.g. 00:00 -> 23:00 previous day).
+    const baseDate = new Date(year, month - 1, day, 12, 0, 0);
+    
+    const startOfDay = new Date(baseDate);
+    startOfDay.setHours(0,0,0,0);
+    
+    const endOfDay = new Date(baseDate);
+    endOfDay.setHours(23,59,59,999);
 
+    // Find jobs that overlap with this day
     const daysJobs = this.jobs.filter(job => {
       if (job.scheduledTime) {
         const d = new Date(job.scheduledTime);
-        return d >= targetDate && d <= targetDateEnd && job.status !== JobStatus.CANCELLED;
+        return d >= startOfDay && d <= endOfDay && job.status !== JobStatus.CANCELLED;
       }
       if (job.startedAt) {
         const d = new Date(job.startedAt);
-        return d >= targetDate && d <= targetDateEnd;
+        return d >= startOfDay && d <= endOfDay;
       }
       return false;
     });
@@ -286,8 +296,10 @@ class GarageService {
       const bayJobs = daysJobs.filter(j => j.bayId === bayId);
 
       for (let hour = SHOP_OPEN_HOUR; hour <= SHOP_CLOSE_HOUR - durationHours; hour += (stepMinutes/60)) {
-        const slotStart = new Date(targetDate);
-        slotStart.setHours(Math.floor(hour), (hour % 1) * 60, 0, 0);
+        // Atomic construction of the slot time.
+        // explicitly setting year, month, day, hour prevents "day prior" issues 
+        // that can happen if you setHours on a Date object near a DST boundary.
+        const slotStart = new Date(year, month - 1, day, Math.floor(hour), (hour % 1) * 60, 0, 0);
         const slotEnd = new Date(slotStart.getTime() + (durationHours + bufferHours) * 3600000);
 
         let isBlocked = false;

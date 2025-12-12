@@ -13,12 +13,21 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user }) => {
   const [myJobs, setMyJobs] = useState<Job[]>([]);
   const [showBooking, setShowBooking] = useState(false);
 
+  // Helper to get local date string YYYY-MM-DD
+  const getTodayString = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Booking Form State
   const [formData, setFormData] = useState({
     carModel: '',
     licensePlate: '',
     serviceId: '',
-    scheduledDate: new Date().toISOString().split('T')[0],
+    scheduledDate: getTodayString(),
     selectedSlot: 0
   });
 
@@ -73,7 +82,7 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user }) => {
         carModel: '', 
         licensePlate: '', 
         serviceId: '', 
-        scheduledDate: new Date().toISOString().split('T')[0], 
+        scheduledDate: getTodayString(), 
         selectedSlot: 0 
     });
   };
@@ -130,7 +139,7 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user }) => {
                     <input 
                         required 
                         type="date" 
-                        min={new Date().toISOString().split('T')[0]}
+                        min={getTodayString()}
                         className="w-full border p-2.5 rounded-lg text-sm mb-4" 
                         value={formData.scheduledDate} 
                         onChange={e=>setFormData({...formData, scheduledDate: e.target.value})}
