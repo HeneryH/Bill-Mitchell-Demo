@@ -1,12 +1,14 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, Firestore } from 'firebase/firestore';
 
-// Note: To prevent security scanners from failing the build due to API key exposure
-// in the client bundle, we are defaulting to Offline Demo Mode.
-// The app is fully functional with local data persistence.
+// Safely attempt to read the environment variable.
+// In Vite, import.meta.env is replaced at build time.
+// We use a safe check to prevent runtime errors if env is undefined.
+const env = (import.meta as any).env;
+const apiKey = env ? env.VITE_FIREBASE_API_KEY : "";
 
 const firebaseConfig = {
-  apiKey: "", // Intentionally empty to trigger offline mode safely
+  apiKey: apiKey,
   authDomain: "gen-lang-client-0663082497.firebaseapp.com",
   projectId: "gen-lang-client-0663082497",
   storageBucket: "gen-lang-client-0663082497.firebasestorage.app",
@@ -18,14 +20,15 @@ const firebaseConfig = {
 let db: Firestore;
 
 try {
-  // Check if apiKey is present (it won't be)
+  // If no API key is found (e.g. local dev without .env, or build without env vars),
+  // we throw to trigger the catch block and enable Offline Demo Mode.
   if (!firebaseConfig.apiKey) {
     throw new Error("Firebase API Key missing - switching to Offline Mode");
   }
   const app = initializeApp(firebaseConfig);
   db = getFirestore(app);
 } catch (e) {
-  console.warn("Initializing Offline Demo Mode (Firebase config incomplete).");
+  console.warn("Initializing Offline Demo Mode (Firebase config incomplete or missing).");
   // Return a dummy object. Usage in GarageService (e.g., collection(db, ...)) will throw,
   // which is caught by GarageService to enable offline mode.
   db = {} as Firestore;
