@@ -41,9 +41,23 @@ const ManagerDashboard: React.FC = () => {
   const bayEfficiencyData = Array.from({length: 5}, (_, i) => {
     const bayId = i + 1;
     const bayJobs = jobs.filter(j => j.bayId === bayId);
+    
+    // Filter completed jobs to only show those completed TODAY
+    const completedTodayCount = bayJobs.filter(j => {
+        if (j.status !== JobStatus.COMPLETED) return false;
+        if (!j.completedAt) return false;
+        
+        const jobDate = new Date(j.completedAt);
+        const today = new Date();
+        
+        return jobDate.getDate() === today.getDate() &&
+               jobDate.getMonth() === today.getMonth() &&
+               jobDate.getFullYear() === today.getFullYear();
+    }).length;
+
     return {
       name: `Bay ${bayId}`,
-      completed: bayJobs.filter(j => j.status === JobStatus.COMPLETED).length,
+      completed: completedTodayCount,
       active: bayJobs.filter(j => j.status === JobStatus.IN_PROGRESS).length
     };
   });
@@ -194,7 +208,7 @@ const ManagerDashboard: React.FC = () => {
             </div>
 
             <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">Bay Performance</h3>
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">Bay Performance (Today)</h3>
             <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={bayEfficiencyData}>
@@ -203,7 +217,7 @@ const ManagerDashboard: React.FC = () => {
                     <Tooltip cursor={{ fill: '#F8FAFC' }} />
                     <Legend />
                     <Bar dataKey="active" stackId="a" fill="#3B82F6" name="Active" radius={[0, 0, 4, 4]} />
-                    <Bar dataKey="completed" stackId="a" fill="#10B981" name="Completed" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="completed" stackId="a" fill="#10B981" name="Completed Today" radius={[4, 4, 0, 0]} />
                 </BarChart>
                 </ResponsiveContainer>
             </div>
